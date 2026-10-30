@@ -5,5 +5,5 @@
   "assets": { "directory": "./public", "binding": "ASSETS" },
   "durable_objects": { "bindings": [{ "name": "ROOMS", "class_name": "Room" }] },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Room"] }],
-  "vars": { "GOOGLE_CLIENT_ID": "COLE_AQUI_SEU_CLIENT_ID.apps.googleusercontent.com" }
+  "vars": { "GOOGLE_CLIENT_ID": "821581448271-2fvoris1396lfj1d071s1scqv0vsd19m.apps.googleusercontent.com" }
 }
