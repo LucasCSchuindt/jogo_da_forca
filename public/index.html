@@ -1,1 +1,221 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Forca em grupo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+:root{--bg:#10243a;--panel:#183552;--ink:#dce6f2;--dim:#8aa0b8;--hit:#7bd389;--miss:#ff6b6b;--gold:#ffc857}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;background:var(--bg);color:var(--ink);font-family:"Bricolage Grotesque",system-ui,sans-serif;
+  background-image:linear-gradient(#ffffff08 1px,transparent 1px),linear-gradient(90deg,#ffffff08 1px,transparent 1px);background-size:32px 32px}
+.screen{display:none;min-height:100vh;padding:24px;max-width:960px;margin:0 auto}
+.screen.on{display:block}
+#login,#lobby{text-align:center;padding-top:14vh}
+h1{font-size:clamp(2.6rem,9vw,5.5rem);font-weight:800;margin:0 0 8px;letter-spacing:-.03em}
+p.sub{color:var(--dim);margin:0 0 32px;font-size:1.1rem}
+input,button{font:inherit}
+input{background:var(--panel);border:2px solid #ffffff22;color:var(--ink);padding:12px 16px;border-radius:10px;text-align:center;font-size:1.2rem;width:220px;text-transform:uppercase}
+.btn{background:var(--gold);color:#10243a;border:0;padding:12px 22px;border-radius:10px;font-weight:700;cursor:pointer;font-size:1.05rem}
+.btn:focus-visible,input:focus-visible,.key:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+#gbtn{display:inline-block}
+.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;color:var(--dim)}
+.top b{color:var(--ink)}
+.grid{display:grid;grid-template-columns:1fr 260px;gap:24px}
+@media(max-width:760px){.grid{grid-template-columns:1fr}}
+.stage{background:var(--panel);border-radius:16px;padding:20px}
+svg{width:100%;max-width:300px;display:block;margin:0 auto}
+svg path,svg circle,svg line{fill:none;stroke:var(--ink);stroke-width:5;stroke-linecap:round}
+.body path,.body circle,.body line{stroke:var(--miss)}
+#word{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:20px 0}
+.slot{width:clamp(28px,7vw,44px);height:clamp(40px,9vw,56px);border-bottom:4px solid var(--ink);font-size:clamp(1.6rem,5vw,2.4rem);font-weight:800;text-align:center;line-height:1.3}
+#turn{text-align:center;font-weight:700;font-size:1.2rem;min-height:1.6em}
+#keys{display:grid;grid-template-columns:repeat(9,1fr);gap:6px;margin-top:14px}
+@media(max-width:520px){#keys{grid-template-columns:repeat(7,1fr)}}
+.key{background:#ffffff14;color:var(--ink);border:0;border-radius:8px;padding:10px 0;font-weight:700;cursor:pointer}
+.key:disabled{cursor:default;opacity:.9}
+.key.hit{background:var(--hit);color:#10243a}
+.key.miss{background:var(--miss);color:#10243a}
+.key.locked:not(.hit):not(.miss){opacity:.4}
+#players{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+#players li{display:flex;align-items:center;gap:10px;background:var(--panel);padding:10px 12px;border-radius:12px;border:2px solid transparent}
+#players li.turn{border-color:var(--gold)}
+#players li.off{opacity:.45}
+#players img{width:32px;height:32px;border-radius:50%;background:#ffffff22}
+#players .n{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#over{display:none;text-align:center;margin-top:16px}
+#over h2{margin:0 0 10px;font-size:1.8rem}
+#toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--miss);color:#10243a;padding:10px 18px;border-radius:10px;font-weight:700;display:none}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto}}
+</style>
+</head>
+<body>
 
+<section id="login" class="screen on">
+  <h1>Forca em grupo</h1>
+  <p class="sub">Entre com sua conta Google para jogar com os amigos.</p>
+  <div id="gbtn"></div>
+  <p id="loginErr" class="sub" style="color:var(--miss)"></p>
+</section>
+
+<section id="lobby" class="screen">
+  <h1 id="hello">Olá!</h1>
+  <p class="sub">Digite um código de sala. Quem usar o mesmo código joga com você.</p>
+  <input id="room" maxlength="12" placeholder="CODIGO" aria-label="Código da sala">
+  <button class="btn" id="join">Entrar na sala</button>
+</section>
+
+<section id="game" class="screen">
+  <div class="top"><span>Sala <b id="roomName"></b></span><button class="btn" id="copy" style="padding:6px 14px;font-size:.9rem">Copiar link</button></div>
+  <div class="grid">
+    <div class="stage">
+      <svg viewBox="0 0 200 230" aria-label="Boneco da forca">
+        <g id="gallows"><line x1="20" y1="215" x2="120" y2="215"/><line x1="50" y1="215" x2="50" y2="20"/><path d="M50 20H140"/><line x1="140" y1="20" x2="140" y2="45"/></g>
+        <g class="body">
+          <circle class="part" cx="140" cy="62" r="17"/>
+          <line class="part" x1="140" y1="79" x2="140" y2="140"/>
+          <line class="part" x1="140" y1="95" x2="115" y2="122"/>
+          <line class="part" x1="140" y1="95" x2="165" y2="122"/>
+          <line class="part" x1="140" y1="140" x2="118" y2="180"/>
+          <line class="part" x1="140" y1="140" x2="162" y2="180"/>
+        </g>
+      </svg>
+      <div id="word" aria-live="polite"></div>
+      <div id="turn"></div>
+      <div id="keys"></div>
+      <div id="over"><h2 id="overMsg"></h2><button class="btn" id="next">Nova rodada</button></div>
+    </div>
+    <ul id="players"></ul>
+  </div>
+</section>
+<div id="toast"></div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+let token = null, ws = null, prev = null, user = null;
+const parts = [...document.querySelectorAll(".part")];
+const lens = parts.map((p) => p.getTotalLength());
+
+function show(id){ document.querySelectorAll(".screen").forEach((s) => s.classList.toggle("on", s.id === id)); }
+function toast(t){ const e = $("#toast"); e.textContent = t; e.style.display = "block"; gsap.fromTo(e,{y:20,opacity:0},{y:0,opacity:1,duration:.3}); setTimeout(()=>e.style.display="none",2500); }
+
+// ---------- Login Google ----------
+window.onload = async () => {
+  const { clientId } = await (await fetch("/config")).json();
+  google.accounts.id.initialize({ client_id: clientId, callback: onLogin });
+  google.accounts.id.renderButton($("#gbtn"), { theme: "filled_blue", size: "large", shape: "pill", text: "signin_with", locale: "pt-BR" });
+  gsap.from("#login > *", { y: 30, opacity: 0, duration: .8, stagger: .12, ease: "power3.out" });
+  const hash = location.hash.slice(1);
+  if (hash) $("#room").value = hash;
+};
+
+function onLogin(res){
+  token = res.credential;
+  const p = JSON.parse(decodeURIComponent(escape(atob(token.split(".")[1].replace(/-/g,"+").replace(/_/g,"/")))));
+  user = p;
+  $("#hello").textContent = "Olá, " + (p.given_name || p.name) + "!";
+  show("lobby");
+  gsap.from("#lobby > *", { y: 30, opacity: 0, duration: .6, stagger: .1, ease: "power3.out" });
+}
+
+// ---------- Conexão ----------
+$("#join").onclick = () => {
+  const room = ($("#room").value || "SALA").toUpperCase().replace(/[^A-Z0-9]/g, "");
+  connect(room);
+};
+
+function connect(room){
+  const proto = location.protocol === "https:" ? "wss" : "ws";
+  ws = new WebSocket(`${proto}://${location.host}/ws/${room}?token=${encodeURIComponent(token)}`);
+  ws.onopen = () => { $("#roomName").textContent = room; location.hash = room; buildKeys(); show("game"); };
+  ws.onmessage = (e) => { const s = JSON.parse(e.data); if (s.t === "state") render(s); };
+  ws.onclose = () => { if ($("#game").classList.contains("on")) { toast("Conexão perdida. Entre de novo."); show("lobby"); } else { $("#loginErr").textContent = "Não foi possível entrar. Faça login novamente."; show("login"); } prev = null; };
+}
+
+$("#copy").onclick = () => navigator.clipboard.writeText(location.href).then(() => toast("Link copiado"));
+$("#next").onclick = () => ws.send(JSON.stringify({ t: "next" }));
+
+// ---------- Teclado ----------
+function buildKeys(){
+  const k = $("#keys"); k.innerHTML = "";
+  for (const l of "ABCDEFGHIJKLMNOPQRSTUVWXYZ") {
+    const b = document.createElement("button");
+    b.className = "key"; b.textContent = l; b.dataset.l = l;
+    b.onclick = () => ws.send(JSON.stringify({ t: "guess", l }));
+    k.appendChild(b);
+  }
+}
+document.addEventListener("keydown", (e) => {
+  if (!$("#game").classList.contains("on") || e.ctrlKey || e.metaKey) return;
+  const b = document.querySelector(`.key[data-l="${e.key.toUpperCase()}"]`);
+  if (b && !b.disabled) b.click();
+});
+
+// ---------- Render + GSAP ----------
+function render(s){
+  const mine = s.turn === s.you;
+  const newRound = !prev || s.errors < prev.errors || s.masked.length !== prev.masked.length || (prev.status !== "playing" && s.status === "playing");
+
+  // palavra
+  const w = $("#word");
+  if (newRound || w.children.length !== s.masked.length) {
+    w.innerHTML = s.masked.map(() => '<div class="slot"></div>').join("");
+    gsap.from(".slot", { scaleY: 0, transformOrigin: "bottom", duration: .4, stagger: .04, ease: "back.out(2)" });
+  }
+  s.masked.forEach((c, i) => {
+    const el = w.children[i];
+    const txt = c === "_" ? (s.word ? s.word[i] : "") : c;
+    const revealed = el.textContent === "" && txt && c !== "_";
+    el.textContent = txt;
+    el.style.color = c === "_" && s.word ? "var(--miss)" : "";
+    if (revealed) gsap.fromTo(el, { y: -30, opacity: 0 }, { y: 0, opacity: 1, duration: .5, ease: "bounce.out" });
+  });
+
+  // boneco
+  parts.forEach((p, i) => {
+    if (i < s.errors) {
+      const isNew = !prev || i >= prev.errors;
+      gsap.set(p, { strokeDasharray: lens[i] });
+      if (isNew && prev && s.errors > prev.errors) {
+        gsap.fromTo(p, { strokeDashoffset: lens[i] }, { strokeDashoffset: 0, duration: .6, ease: "power2.out" });
+      } else gsap.set(p, { strokeDashoffset: 0 });
+    } else gsap.set(p, { strokeDasharray: lens[i], strokeDashoffset: lens[i] });
+  });
+  if (prev && s.errors > prev.errors) gsap.fromTo("svg", { x: -8 }, { x: 0, duration: .5, ease: "elastic.out(2,.3)" });
+
+  // teclado
+  document.querySelectorAll(".key").forEach((b) => {
+    const l = b.dataset.l;
+    const hit = s.hits.includes(l), miss = s.misses.includes(l);
+    b.classList.toggle("hit", hit); b.classList.toggle("miss", miss);
+    b.disabled = hit || miss || !mine || s.status !== "playing";
+    b.classList.toggle("locked", !mine && !hit && !miss);
+    if (s.last && s.last.l === l && (!prev || !prev.last || prev.last.l !== l || prev.errors !== s.errors || prev.hits.length !== s.hits.length)) gsap.fromTo(b, { scale: 1.4 }, { scale: 1, duration: .4, ease: "back.out(3)" });
+  });
+
+  // vez
+  const cur = s.players.find((p) => p.id === s.turn);
+  $("#turn").textContent = s.status !== "playing" ? "" : mine ? "Sua vez! Escolha uma letra." : cur ? `Vez de ${cur.name}` : "";
+  if (mine && s.status === "playing" && (!prev || prev.turn !== s.turn)) gsap.fromTo("#turn", { scale: 1.3, color: "#ffc857" }, { scale: 1, color: "#dce6f2", duration: .6 });
+
+  // jogadores
+  $("#players").innerHTML = s.players.map((p) =>
+    `<li class="${p.id === s.turn ? "turn" : ""} ${p.online ? "" : "off"}"><img src="${p.picture}" referrerpolicy="no-referrer" alt=""><span class="n"></span><b>${p.score}</b></li>`).join("");
+  [...$("#players").children].forEach((li, i) => li.querySelector(".n").textContent = s.players[i].name);
+
+  // fim de rodada
+  const over = $("#over");
+  if (s.status !== "playing") {
+    $("#overMsg").textContent = s.status === "won" ? "Vocês acertaram! +20 de bônus" : "A forca fechou. A palavra aparece em vermelho.";
+    if (over.style.display !== "block") { over.style.display = "block"; gsap.from(over, { y: 20, opacity: 0, duration: .5 }); }
+  } else over.style.display = "none";
+
+  prev = s;
+}
+</script>
+</body>
+</html>
