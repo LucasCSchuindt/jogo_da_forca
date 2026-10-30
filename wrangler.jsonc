@@ -1,1 +1,9 @@
-
+{
+  "name": "jogo_da_forca",
+  "main": "src/index.js",
+  "compatibility_date": "2025-01-01",
+  "assets": { "directory": "./public", "binding": "ASSETS" },
+  "durable_objects": { "bindings": [{ "name": "ROOMS", "class_name": "Room" }] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Room"] }],
+  "vars": { "GOOGLE_CLIENT_ID": "COLE_AQUI_SEU_CLIENT_ID.apps.googleusercontent.com" }
+}
