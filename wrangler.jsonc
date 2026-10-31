@@ -1,5 +1,5 @@
 {
-  "name": "forca-multiplayer",
+  "name": "jogo-da-forca",
   "main": "src/index.js",
   "compatibility_date": "2025-01-01",
   "assets": { "directory": "./public", "binding": "ASSETS" },
